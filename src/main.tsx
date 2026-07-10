@@ -1,0 +1,454 @@
+import { createContext, StrictMode, useContext, useEffect, useState } from "react";
+import { createRoot } from "react-dom/client";
+import { Activity, ArrowRight, Clock3, Flame, Gauge, Radio, Sparkles, TrendingDown, TrendingUp, Users, Zap } from "lucide-react";
+import "./styles.css";
+
+type PulseState = "Prime" | "Good" | "Busy" | "Oversaturated";
+
+type Signal = {
+  label: string;
+  value: string;
+  tone: "positive" | "negative" | "neutral";
+  detail: string;
+};
+
+type Metric = {
+  label: string;
+  value: string;
+  delta?: string;
+  tone?: "positive" | "negative" | "neutral";
+};
+
+type Category = {
+  name: string;
+  momentum: number;
+  viewers: string;
+  creators: number;
+  trend: "up" | "down";
+};
+
+type TimelinePoint = {
+  hour: string;
+  score: number;
+};
+
+type PulseData = {
+  state: PulseState;
+  score: number;
+  recommendation: string;
+  recommendationDetail: string;
+  lastUpdated: string;
+  pressure: {
+    label: string;
+    index: number;
+    creatorVelocity: string;
+    openWindow: string;
+  };
+  metrics: Metric[];
+  signals: Signal[];
+  categories: Category[];
+  timeline: TimelinePoint[];
+};
+
+const fallbackPulse: PulseData = {
+  state: "Prime" as PulseState,
+  score: 86,
+  recommendation: "Go live now",
+  recommendationDetail: "Viewer demand is rising faster than creator competition. The ecosystem has room for fresh streams.",
+  lastUpdated: "18 seconds ago",
+  pressure: {
+    label: "Manageable",
+    index: 42,
+    creatorVelocity: "+4%",
+    openWindow: "38m",
+  },
+  metrics: [
+    { label: "Live viewers", value: "18.4K", delta: "+12%", tone: "positive" },
+    { label: "Live creators", value: "286", delta: "+4%", tone: "positive" },
+    { label: "Viewers per creator", value: "64", delta: "+8%", tone: "positive" },
+    { label: "New streams / 15m", value: "31", delta: "-6%", tone: "negative" },
+  ] satisfies Metric[],
+  signals: [
+    { label: "Gaming activity", value: "Surging", tone: "positive", detail: "Demand up 18% in the last hour." },
+    { label: "Music activity", value: "Cooling", tone: "negative", detail: "Viewers are rotating into faster categories." },
+    { label: "Viewer competition", value: "Manageable", tone: "neutral", detail: "Creator growth is below the 24h baseline." },
+    { label: "Audience shift", value: "Active", tone: "neutral", detail: "Attention is consolidating around three categories." },
+  ] satisfies Signal[],
+  categories: [
+    { name: "Gaming", momentum: 92, viewers: "7.8K", creators: 88, trend: "up" },
+    { name: "Just Chatting", momentum: 74, viewers: "4.1K", creators: 71, trend: "up" },
+    { name: "Music", momentum: 48, viewers: "2.7K", creators: 49, trend: "down" },
+    { name: "Creative", momentum: 63, viewers: "1.9K", creators: 34, trend: "up" },
+  ] satisfies Category[],
+  timeline: [
+    { hour: "00", score: 42 },
+    { hour: "02", score: 39 },
+    { hour: "04", score: 44 },
+    { hour: "06", score: 51 },
+    { hour: "08", score: 57 },
+    { hour: "10", score: 61 },
+    { hour: "12", score: 68 },
+    { hour: "14", score: 66 },
+    { hour: "16", score: 77 },
+    { hour: "18", score: 86 },
+    { hour: "20", score: 82 },
+    { hour: "22", score: 73 },
+  ] satisfies TimelinePoint[],
+};
+
+const PulseContext = createContext<PulseData>(fallbackPulse);
+
+const stateCopy: Record<PulseState, string> = {
+  Prime: "The window is open",
+  Good: "Worth going live",
+  Busy: "Proceed carefully",
+  Oversaturated: "Wait for pressure to ease",
+};
+
+function App() {
+  const [pulse, setPulse] = useState<PulseData>(fallbackPulse);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const loadPulse = async () => {
+      try {
+        const response = await fetch("/api/pulse", { cache: "no-store" });
+        if (!response.ok) return;
+        const nextPulse = await response.json() as PulseData;
+        if (isMounted) setPulse(nextPulse);
+      } catch {
+        // Keep the frozen V1 UI stable if the backend is not configured locally yet.
+      }
+    };
+
+    void loadPulse();
+    const intervalId = window.setInterval(loadPulse, 60_000);
+
+    return () => {
+      isMounted = false;
+      window.clearInterval(intervalId);
+    };
+  }, []);
+
+  return (
+    <PulseContext.Provider value={pulse}>
+      <main>
+        <LandingPage />
+        <DashboardPage />
+      </main>
+    </PulseContext.Provider>
+  );
+}
+
+function usePulse() {
+  return useContext(PulseContext);
+}
+
+function LandingPage() {
+  const pulse = usePulse();
+
+  return (
+    <section className="landing" aria-labelledby="hero-title">
+      <div className="top-nav">
+        <a className="brand" href="#top" aria-label="Blaze Pulse home">
+          <span className="brand-mark"><Flame size={18} /></span>
+          <span>Blaze Pulse</span>
+        </a>
+        <a className="nav-action" href="#dashboard">
+          Open dashboard <ArrowRight size={16} />
+        </a>
+      </div>
+
+      <div className="hero-grid">
+        <div className="hero-copy">
+          <p className="eyebrow">Live ecosystem timing</p>
+          <h1 id="hero-title">Blaze Pulse</h1>
+          <p className="tagline">Know the perfect moment to go live.</p>
+          <p className="hero-text">
+            A premium control room for the Blaze ecosystem. One decisive signal, tuned for creators asking whether now is the right moment.
+          </p>
+          <div className="hero-actions">
+            <a className="primary-action" href="#dashboard">
+              Check the pulse <Zap size={17} />
+            </a>
+            <span className="status-pill"><Radio size={15} /> Live mock state</span>
+          </div>
+        </div>
+
+        <div className="hero-visual" aria-hidden="true">
+          <div className="radar-stage">
+            <div className="radar-ring ring-one" />
+            <div className="radar-ring ring-two" />
+            <div className="radar-ring ring-three" />
+            <div className="radar-sweep" />
+            <div className="radar-core">
+              <span>86</span>
+              <small>Prime</small>
+            </div>
+            <i className="pulse-dot dot-a" />
+            <i className="pulse-dot dot-b" />
+            <i className="pulse-dot dot-c" />
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function DashboardPage() {
+  return (
+    <section className="dashboard" id="dashboard" aria-label="Blaze Pulse dashboard">
+      <div className="dashboard-shell">
+        <header className="dashboard-header">
+          <div>
+            <p className="eyebrow">Blaze ecosystem</p>
+            <h2>Should I go live now?</h2>
+          </div>
+          <LastUpdated />
+        </header>
+
+        <div className="dashboard-grid">
+          <OpportunityPanel />
+          <RecommendationCard />
+          <SignalsPanel />
+          <CategoryMomentum />
+          <CompetitionPressure />
+          <LiveMetrics />
+          <Timeline24h />
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function LastUpdated() {
+  const pulse = usePulse();
+
+  return (
+    <div className="last-updated">
+      <span className="live-dot" />
+      <div>
+        <span>Last updated</span>
+        <strong>{pulse.lastUpdated}</strong>
+      </div>
+    </div>
+  );
+}
+
+function OpportunityPanel() {
+  const pulse = usePulse();
+
+  return (
+    <section className="panel opportunity-panel" aria-labelledby="opportunity-title">
+      <div className="panel-heading">
+        <div>
+          <p className="eyebrow">Opportunity gauge</p>
+          <h3 id="opportunity-title">{pulse.state}</h3>
+        </div>
+        <Gauge size={22} />
+      </div>
+      <div className="gauge-wrap">
+        <OpportunityGauge score={pulse.score} state={pulse.state} />
+      </div>
+      <div className="state-caption">
+        <strong>{stateCopy[pulse.state]}</strong>
+        <span>Opportunity is reading {pulse.score}/100 from live ecosystem pressure.</span>
+      </div>
+    </section>
+  );
+}
+
+function OpportunityGauge({ score, state }: { score: number; state: PulseState }) {
+  const angle = -126 + score * 2.52;
+  return (
+    <div className="opportunity-gauge" aria-label={`Opportunity score ${score}, ${state}`}>
+      <div className="gauge-arc" />
+      <div className="gauge-track" />
+      <div className="gauge-needle" style={{ transform: `rotate(${angle}deg)` }} />
+      <div className="gauge-center">
+        <span>{score}</span>
+        <small>{state}</small>
+      </div>
+      <div className="gauge-label label-low">Wait</div>
+      <div className="gauge-label label-high">Live</div>
+    </div>
+  );
+}
+
+function RecommendationCard() {
+  const pulse = usePulse();
+
+  return (
+    <section className="panel recommendation-card" aria-labelledby="recommendation-title">
+      <div className="panel-heading">
+        <div>
+          <p className="eyebrow">Smart recommendation</p>
+          <h3 id="recommendation-title">{pulse.recommendation}</h3>
+        </div>
+        <Sparkles size={22} />
+      </div>
+      <p>{pulse.recommendationDetail}</p>
+      <div className="recommendation-row">
+        <span>Confidence</span>
+        <strong>High</strong>
+      </div>
+      <div className="skeleton-strip" aria-hidden="true">
+        <span />
+        <span />
+        <span />
+      </div>
+    </section>
+  );
+}
+
+function SignalsPanel() {
+  const pulse = usePulse();
+
+  return (
+    <section className="panel signals-panel" aria-labelledby="signals-title">
+      <div className="panel-heading">
+        <div>
+          <p className="eyebrow">Ecosystem signals</p>
+          <h3 id="signals-title">Why now looks strong</h3>
+        </div>
+        <Activity size={22} />
+      </div>
+      <div className="signal-list">
+        {pulse.signals.map((signal) => (
+          <article className={`signal-card tone-${signal.tone}`} key={signal.label}>
+            <span>{signal.label}</span>
+            <strong>{signal.value}</strong>
+            <p>{signal.detail}</p>
+          </article>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function CategoryMomentum() {
+  const pulse = usePulse();
+
+  return (
+    <section className="panel category-panel" aria-labelledby="category-title">
+      <div className="panel-heading">
+        <div>
+          <p className="eyebrow">Category momentum</p>
+          <h3 id="category-title">Attention is moving</h3>
+        </div>
+        <TrendingUp size={22} />
+      </div>
+      <div className="category-list">
+        {pulse.categories.map((category) => (
+          <article className="category-row" key={category.name}>
+            <div>
+              <strong>{category.name}</strong>
+              <span>{category.viewers} viewers / {category.creators} live</span>
+            </div>
+            <div className="momentum-bar" aria-label={`${category.name} momentum ${category.momentum}`}>
+              <span style={{ width: `${category.momentum}%` }} />
+            </div>
+            {category.trend === "up" ? <TrendingUp className="trend-positive" size={18} /> : <TrendingDown className="trend-negative" size={18} />}
+          </article>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function CompetitionPressure() {
+  const pulse = usePulse();
+
+  return (
+    <section className="panel pressure-panel" aria-labelledby="pressure-title">
+      <div className="panel-heading">
+        <div>
+          <p className="eyebrow">Competition pressure</p>
+          <h3 id="pressure-title">{pulse.pressure.label}</h3>
+        </div>
+        <Users size={22} />
+      </div>
+      <div className="pressure-meter">
+        <span />
+      </div>
+      <div className="pressure-grid">
+        <MetricMini label="Pressure index" value={`${pulse.pressure.index}/100`} tone={pulse.pressure.index >= 70 ? "negative" : "neutral"} />
+        <MetricMini label="Creator velocity" value={pulse.pressure.creatorVelocity} tone={pulse.pressure.creatorVelocity.startsWith("-") ? "negative" : "positive"} />
+        <MetricMini label="Open window" value={pulse.pressure.openWindow} />
+      </div>
+    </section>
+  );
+}
+
+function LiveMetrics() {
+  const pulse = usePulse();
+
+  return (
+    <section className="panel metrics-panel" aria-labelledby="metrics-title">
+      <div className="panel-heading">
+        <div>
+          <p className="eyebrow">Live ecosystem metrics</p>
+          <h3 id="metrics-title">Current state</h3>
+        </div>
+        <Radio size={22} />
+      </div>
+      <div className="metrics-grid">
+        {pulse.metrics.map((metric) => (
+          <MetricMini key={metric.label} label={metric.label} value={metric.value} delta={metric.delta} tone={metric.tone} />
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function MetricMini({ label, value, delta, tone = "neutral" }: Metric) {
+  return (
+    <article className={`metric-mini tone-${tone}`}>
+      <span>{label}</span>
+      <strong>{value}</strong>
+      {delta && <em>{delta}</em>}
+    </article>
+  );
+}
+
+function Timeline24h() {
+  const pulse = usePulse();
+  const points = pulse.timeline.map((point, index) => {
+    const x = (index / (pulse.timeline.length - 1)) * 100;
+    const y = 100 - point.score;
+    return `${x},${y}`;
+  }).join(" ");
+
+  return (
+    <section className="panel timeline-panel" aria-labelledby="timeline-title">
+      <div className="panel-heading">
+        <div>
+          <p className="eyebrow">24-hour momentum timeline</p>
+          <h3 id="timeline-title">Opportunity rising</h3>
+        </div>
+        <Clock3 size={22} />
+      </div>
+      <div className="timeline-chart">
+        <svg viewBox="0 0 100 100" preserveAspectRatio="none" role="img" aria-label="24 hour opportunity score trend">
+          <polyline points={points} />
+        </svg>
+        <div className="timeline-bars">
+          {pulse.timeline.map((point) => (
+            <span key={point.hour} style={{ height: `${Math.max(14, point.score)}%` }} title={`${point.hour}:00 score ${point.score}`} />
+          ))}
+        </div>
+      </div>
+      <div className="timeline-labels">
+        <span>24h low {Math.min(...pulse.timeline.map((point) => point.score))}</span>
+        <strong>Now {pulse.score}</strong>
+      </div>
+    </section>
+  );
+}
+
+createRoot(document.getElementById("root")!).render(
+  <StrictMode>
+    <App />
+  </StrictMode>,
+);
