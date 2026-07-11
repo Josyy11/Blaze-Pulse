@@ -1,5 +1,8 @@
+import { existsSync, readFileSync } from "node:fs";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
+
+loadEnvFile();
 
 const API_BASE = process.env.BLAZE_API_BASE_URL || "https://api.blaze.stream";
 const TOKEN_URL = process.env.BLAZE_TOKEN_URL || "https://blaze.stream/bapi/oauth2/token";
@@ -7,6 +10,7 @@ const STORE_PATH = process.env.BLAZE_PULSE_STORE || join(process.cwd(), "data", 
 const SNAPSHOT_INTERVAL_MS = 60_000;
 const HISTORY_WINDOW_MS = 24 * 60 * 60 * 1000;
 const MAX_STAT_REQUESTS = Number(process.env.BLAZE_PULSE_MAX_CHANNEL_STATS || 120);
+const REQUEST_TIMEOUT_MS = Number(process.env.BLAZE_REQUEST_TIMEOUT_MS || 12_000);
 
 let tokenCache = null;
 let snapshotPromise = null;
@@ -24,12 +28,14 @@ export async function handlePulseRequest(_request, response) {
       sendJson(response, 200, {
         ...latest,
         lastUpdated: relativeTime(latest.capturedAt),
+        status: "stale",
         stale: true,
       });
       return;
     }
 
     sendJson(response, 503, {
+      status: "error",
       error: "Blaze Pulse is not configured yet.",
       detail: getConfigError(error),
     });
@@ -45,6 +51,7 @@ export async function getPulse() {
     return {
       ...latest.pulse,
       lastUpdated: relativeTime(latest.capturedAt),
+      status: "ready",
     };
   }
 
@@ -82,6 +89,7 @@ async function captureSnapshot() {
   memoryPulse = {
     ...pulse,
     lastUpdated: "just now",
+    status: "ready",
   };
 
   return memoryPulse;
@@ -129,7 +137,7 @@ async function fetchChannelStats(channels) {
 
 async function blazeFetch(path) {
   const token = await getAppToken();
-  const response = await fetch(`${API_BASE}${path}`, {
+  const response = await fetchWithTimeout(`${API_BASE}${path}`, {
     headers: {
       accept: "application/json",
       authorization: `Bearer ${token}`,
@@ -149,7 +157,7 @@ async function getAppToken() {
     return tokenCache.accessToken;
   }
 
-  const response = await fetch(TOKEN_URL, {
+  const response = await fetchWithTimeout(TOKEN_URL, {
     method: "POST",
     headers: {
       "content-type": "application/json",
@@ -180,6 +188,25 @@ async function getAppToken() {
   };
 
   return accessToken;
+}
+
+async function fetchWithTimeout(url, options = {}) {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+
+  try {
+    return await fetch(url, {
+      ...options,
+      signal: controller.signal,
+    });
+  } catch (error) {
+    if (error?.name === "AbortError") {
+      throw new Error(`Blaze request timed out after ${REQUEST_TIMEOUT_MS}ms`);
+    }
+    throw error;
+  } finally {
+    clearTimeout(timeoutId);
+  }
 }
 
 function buildSnapshots(capturedAt, channels, stats) {
@@ -569,6 +596,27 @@ function sendJson(response, status, body) {
 function assertConfig() {
   if (!process.env.BLAZE_CLIENT_ID || !process.env.BLAZE_CLIENT_SECRET) {
     throw new Error("Missing BLAZE_CLIENT_ID or BLAZE_CLIENT_SECRET");
+  }
+}
+
+function loadEnvFile() {
+  const envPath = join(process.cwd(), ".env");
+  if (!existsSync(envPath)) return;
+
+  const lines = readFileSync(envPath, "utf8").split(/\r?\n/);
+  for (const line of lines) {
+    const trimmed = line.trim();
+    if (!trimmed || trimmed.startsWith("#")) continue;
+    const separatorIndex = trimmed.indexOf("=");
+    if (separatorIndex === -1) continue;
+
+    const key = trimmed.slice(0, separatorIndex).trim();
+    const rawValue = trimmed.slice(separatorIndex + 1).trim();
+    const value = rawValue.replace(/^["']|["']$/g, "");
+
+    if (key && process.env[key] === undefined) {
+      process.env[key] = value;
+    }
   }
 }
 

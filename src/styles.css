@@ -722,6 +722,10 @@ h1 {
   border-bottom: 0;
 }
 
+.category-row.empty-row {
+  grid-template-columns: 1fr;
+}
+
 .category-row strong {
   display: block;
   margin-bottom: 4px;

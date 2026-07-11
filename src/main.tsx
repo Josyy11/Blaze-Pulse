@@ -33,6 +33,7 @@ type TimelinePoint = {
 };
 
 type PulseData = {
+  status?: "loading" | "ready" | "stale" | "error";
   state: PulseState;
   score: number;
   recommendation: string;
@@ -48,55 +49,40 @@ type PulseData = {
   signals: Signal[];
   categories: Category[];
   timeline: TimelinePoint[];
+  error?: string;
 };
 
-const fallbackPulse: PulseData = {
-  state: "Prime" as PulseState,
-  score: 86,
-  recommendation: "Go live now",
-  recommendationDetail: "Viewer demand is rising faster than creator competition. The ecosystem has room for fresh streams.",
-  lastUpdated: "18 seconds ago",
+const emptyTimeline: TimelinePoint[] = [
+  "00", "02", "04", "06", "08", "10", "12", "14", "16", "18", "20", "22",
+].map((hour) => ({ hour, score: 0 }));
+
+const loadingPulse: PulseData = {
+  status: "loading",
+  state: "Busy",
+  score: 0,
+  recommendation: "Checking Blaze",
+  recommendationDetail: "Connecting to the live Blaze ecosystem feed.",
+  lastUpdated: "Connecting",
   pressure: {
-    label: "Manageable",
-    index: 42,
-    creatorVelocity: "+4%",
-    openWindow: "38m",
+    label: "Pending",
+    index: 0,
+    creatorVelocity: "0%",
+    openWindow: "0m",
   },
   metrics: [
-    { label: "Live viewers", value: "18.4K", delta: "+12%", tone: "positive" },
-    { label: "Live creators", value: "286", delta: "+4%", tone: "positive" },
-    { label: "Viewers per creator", value: "64", delta: "+8%", tone: "positive" },
-    { label: "New streams / 15m", value: "31", delta: "-6%", tone: "negative" },
+    { label: "Live viewers", value: "--", tone: "neutral" },
+    { label: "Live creators", value: "--", tone: "neutral" },
+    { label: "Viewers per creator", value: "--", tone: "neutral" },
+    { label: "New streams / 15m", value: "--", tone: "neutral" },
   ] satisfies Metric[],
   signals: [
-    { label: "Gaming activity", value: "Surging", tone: "positive", detail: "Demand up 18% in the last hour." },
-    { label: "Music activity", value: "Cooling", tone: "negative", detail: "Viewers are rotating into faster categories." },
-    { label: "Viewer competition", value: "Manageable", tone: "neutral", detail: "Creator growth is below the 24h baseline." },
-    { label: "Audience shift", value: "Active", tone: "neutral", detail: "Attention is consolidating around three categories." },
+    { label: "Blaze API", value: "Connecting", tone: "neutral", detail: "Waiting for the first live ecosystem snapshot." },
   ] satisfies Signal[],
-  categories: [
-    { name: "Gaming", momentum: 92, viewers: "7.8K", creators: 88, trend: "up" },
-    { name: "Just Chatting", momentum: 74, viewers: "4.1K", creators: 71, trend: "up" },
-    { name: "Music", momentum: 48, viewers: "2.7K", creators: 49, trend: "down" },
-    { name: "Creative", momentum: 63, viewers: "1.9K", creators: 34, trend: "up" },
-  ] satisfies Category[],
-  timeline: [
-    { hour: "00", score: 42 },
-    { hour: "02", score: 39 },
-    { hour: "04", score: 44 },
-    { hour: "06", score: 51 },
-    { hour: "08", score: 57 },
-    { hour: "10", score: 61 },
-    { hour: "12", score: 68 },
-    { hour: "14", score: 66 },
-    { hour: "16", score: 77 },
-    { hour: "18", score: 86 },
-    { hour: "20", score: 82 },
-    { hour: "22", score: 73 },
-  ] satisfies TimelinePoint[],
+  categories: [],
+  timeline: emptyTimeline,
 };
 
-const PulseContext = createContext<PulseData>(fallbackPulse);
+const PulseContext = createContext<PulseData>(loadingPulse);
 
 const stateCopy: Record<PulseState, string> = {
   Prime: "The window is open",
@@ -106,7 +92,7 @@ const stateCopy: Record<PulseState, string> = {
 };
 
 function App() {
-  const [pulse, setPulse] = useState<PulseData>(fallbackPulse);
+  const [pulse, setPulse] = useState<PulseData>(loadingPulse);
 
   useEffect(() => {
     let isMounted = true;
@@ -114,11 +100,15 @@ function App() {
     const loadPulse = async () => {
       try {
         const response = await fetch("/api/pulse", { cache: "no-store" });
-        if (!response.ok) return;
-        const nextPulse = await response.json() as PulseData;
+        const payload = await response.json();
+        if (!response.ok) {
+          if (isMounted) setPulse(errorPulse(payload?.detail || payload?.error || "Blaze API is unavailable."));
+          return;
+        }
+        const nextPulse = payload as PulseData;
         if (isMounted) setPulse(nextPulse);
-      } catch {
-        // Keep the frozen V1 UI stable if the backend is not configured locally yet.
+      } catch (error) {
+        if (isMounted) setPulse(errorPulse(error instanceof Error ? error.message : "Blaze API is unavailable."));
       }
     };
 
@@ -139,6 +129,21 @@ function App() {
       </main>
     </PulseContext.Provider>
   );
+}
+
+function errorPulse(message: string): PulseData {
+  return {
+    ...loadingPulse,
+    status: "error",
+    state: "Oversaturated",
+    recommendation: "Hold for now",
+    recommendationDetail: "Live Blaze ecosystem data is unavailable. Waiting is safer than acting on stale information.",
+    lastUpdated: "Unavailable",
+    error: message,
+    signals: [
+      { label: "Blaze API", value: "Unavailable", tone: "negative", detail: message },
+    ],
+  };
 }
 
 function usePulse() {
@@ -172,7 +177,7 @@ function LandingPage() {
             <a className="primary-action" href="#dashboard">
               Check the pulse <Zap size={17} />
             </a>
-            <span className="status-pill"><Radio size={15} /> Live mock state</span>
+            <span className="status-pill"><Radio size={15} /> {pulse.status === "ready" ? "Live API state" : "Awaiting live API"}</span>
           </div>
         </div>
 
@@ -183,8 +188,8 @@ function LandingPage() {
             <div className="radar-ring ring-three" />
             <div className="radar-sweep" />
             <div className="radar-core">
-              <span>86</span>
-              <small>Prime</small>
+              <span>{pulse.score}</span>
+              <small>{pulse.state}</small>
             </div>
             <i className="pulse-dot dot-a" />
             <i className="pulse-dot dot-b" />
@@ -304,13 +309,14 @@ function RecommendationCard() {
 
 function SignalsPanel() {
   const pulse = usePulse();
+  const title = pulse.status === "ready" || pulse.status === "stale" ? "Why now looks strong" : "Live feed unavailable";
 
   return (
     <section className="panel signals-panel" aria-labelledby="signals-title">
       <div className="panel-heading">
         <div>
           <p className="eyebrow">Ecosystem signals</p>
-          <h3 id="signals-title">Why now looks strong</h3>
+          <h3 id="signals-title">{title}</h3>
         </div>
         <Activity size={22} />
       </div>
@@ -329,17 +335,26 @@ function SignalsPanel() {
 
 function CategoryMomentum() {
   const pulse = usePulse();
+  const title = pulse.categories.length > 0 ? "Attention is moving" : "Awaiting category data";
 
   return (
     <section className="panel category-panel" aria-labelledby="category-title">
       <div className="panel-heading">
         <div>
           <p className="eyebrow">Category momentum</p>
-          <h3 id="category-title">Attention is moving</h3>
+          <h3 id="category-title">{title}</h3>
         </div>
         <TrendingUp size={22} />
       </div>
       <div className="category-list">
+        {pulse.categories.length === 0 && (
+          <article className="category-row empty-row">
+            <div>
+              <strong>No category data</strong>
+              <span>Waiting for a verified Blaze snapshot</span>
+            </div>
+          </article>
+        )}
         {pulse.categories.map((category) => (
           <article className="category-row" key={category.name}>
             <div>
@@ -414,8 +429,10 @@ function MetricMini({ label, value, delta, tone = "neutral" }: Metric) {
 
 function Timeline24h() {
   const pulse = usePulse();
-  const points = pulse.timeline.map((point, index) => {
-    const x = (index / (pulse.timeline.length - 1)) * 100;
+  const timeline = pulse.timeline.length > 1 ? pulse.timeline : emptyTimeline;
+  const title = pulse.status === "ready" || pulse.status === "stale" ? "Opportunity rising" : "Awaiting momentum data";
+  const points = timeline.map((point, index) => {
+    const x = (index / (timeline.length - 1)) * 100;
     const y = 100 - point.score;
     return `${x},${y}`;
   }).join(" ");
@@ -425,7 +442,7 @@ function Timeline24h() {
       <div className="panel-heading">
         <div>
           <p className="eyebrow">24-hour momentum timeline</p>
-          <h3 id="timeline-title">Opportunity rising</h3>
+          <h3 id="timeline-title">{title}</h3>
         </div>
         <Clock3 size={22} />
       </div>
@@ -434,13 +451,13 @@ function Timeline24h() {
           <polyline points={points} />
         </svg>
         <div className="timeline-bars">
-          {pulse.timeline.map((point) => (
+          {timeline.map((point) => (
             <span key={point.hour} style={{ height: `${Math.max(14, point.score)}%` }} title={`${point.hour}:00 score ${point.score}`} />
           ))}
         </div>
       </div>
       <div className="timeline-labels">
-        <span>24h low {Math.min(...pulse.timeline.map((point) => point.score))}</span>
+        <span>24h low {Math.min(...timeline.map((point) => point.score))}</span>
         <strong>Now {pulse.score}</strong>
       </div>
     </section>
