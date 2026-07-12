@@ -150,6 +150,10 @@ function usePulse() {
   return useContext(PulseContext);
 }
 
+function hasLiveCreators(pulse: PulseData) {
+  return pulse.metrics.some((metric) => metric.label === "Live creators" && metric.value !== "0");
+}
+
 function LandingPage() {
   const pulse = usePulse();
 
@@ -309,7 +313,11 @@ function RecommendationCard() {
 
 function SignalsPanel() {
   const pulse = usePulse();
-  const title = pulse.status === "ready" || pulse.status === "stale" ? "Why now looks strong" : "Live feed unavailable";
+  const title = pulse.status !== "ready" && pulse.status !== "stale"
+    ? "Live feed unavailable"
+    : hasLiveCreators(pulse)
+      ? "Why now looks strong"
+      : "Awaiting live activity";
 
   return (
     <section className="panel signals-panel" aria-labelledby="signals-title">
@@ -430,7 +438,12 @@ function MetricMini({ label, value, delta, tone = "neutral" }: Metric) {
 function Timeline24h() {
   const pulse = usePulse();
   const timeline = pulse.timeline.length > 1 ? pulse.timeline : emptyTimeline;
-  const title = pulse.status === "ready" || pulse.status === "stale" ? "Opportunity rising" : "Awaiting momentum data";
+  const hasMomentum = pulse.timeline.some((point) => point.score > 0) && hasLiveCreators(pulse);
+  const title = pulse.status !== "ready" && pulse.status !== "stale"
+    ? "Awaiting momentum data"
+    : hasMomentum
+      ? "Opportunity rising"
+      : "Awaiting momentum data";
   const points = timeline.map((point, index) => {
     const x = (index / (timeline.length - 1)) * 100;
     const y = 100 - point.score;

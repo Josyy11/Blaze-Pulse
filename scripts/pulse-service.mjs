@@ -1,5 +1,7 @@
 import { existsSync, readFileSync } from "node:fs";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
+import http from "node:http";
+import https from "node:https";
 import { dirname, join } from "node:path";
 
 loadEnvFile();
@@ -191,22 +193,55 @@ async function getAppToken() {
 }
 
 async function fetchWithTimeout(url, options = {}) {
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+  const target = new URL(url);
+  const transport = target.protocol === "http:" ? http : https;
+  const body = options.body || null;
+  const headers = { ...(options.headers || {}) };
 
-  try {
-    return await fetch(url, {
-      ...options,
-      signal: controller.signal,
-    });
-  } catch (error) {
-    if (error?.name === "AbortError") {
-      throw new Error(`Blaze request timed out after ${REQUEST_TIMEOUT_MS}ms`);
-    }
-    throw error;
-  } finally {
-    clearTimeout(timeoutId);
+  if (body && !hasHeader(headers, "content-length")) {
+    headers["content-length"] = Buffer.byteLength(body);
   }
+
+  return new Promise((resolve, reject) => {
+    const request = transport.request(
+      target,
+      {
+        method: options.method || "GET",
+        headers,
+        timeout: REQUEST_TIMEOUT_MS,
+      },
+      (response) => {
+        let text = "";
+
+        response.setEncoding("utf8");
+        response.on("data", (chunk) => {
+          text += chunk;
+        });
+        response.on("end", () => {
+          resolve({
+            ok: response.statusCode >= 200 && response.statusCode < 300,
+            status: response.statusCode,
+            headers: response.headers,
+            json: async () => (text ? JSON.parse(text) : {}),
+            text: async () => text,
+          });
+        });
+      },
+    );
+
+    request.on("timeout", () => {
+      request.destroy(new Error(`Blaze request timed out after ${REQUEST_TIMEOUT_MS}ms`));
+    });
+    request.on("error", reject);
+
+    if (body) request.write(body);
+    request.end();
+  });
+}
+
+function hasHeader(headers, headerName) {
+  const lowerName = headerName.toLowerCase();
+  return Object.keys(headers).some((key) => key.toLowerCase() === lowerName);
 }
 
 function buildSnapshots(capturedAt, channels, stats) {
