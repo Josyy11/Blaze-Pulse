@@ -1,9 +1,10 @@
 import { createReadStream, existsSync, statSync } from "node:fs";
 import { createServer } from "node:http";
-import { extname, join, normalize } from "node:path";
+import { dirname, extname, join, normalize } from "node:path";
+import { fileURLToPath } from "node:url";
 import { handlePulseRequest } from "./pulse-service.mjs";
 
-const root = new URL("../dist/", import.meta.url).pathname.slice(1);
+const root = join(dirname(fileURLToPath(import.meta.url)), "../dist");
 const port = Number(process.env.PORT || 4173);
 const host = process.env.HOST || "0.0.0.0";
 
