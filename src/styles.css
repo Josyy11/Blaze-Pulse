@@ -740,6 +740,10 @@ h1 {
   color: var(--negative);
 }
 
+.trend-neutral {
+  color: var(--muted);
+}
+
 .momentum-bar,
 .pressure-meter {
   overflow: hidden;

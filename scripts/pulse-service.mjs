@@ -109,8 +109,9 @@ async function fetchLiveChannels() {
     const items = extractItems(body);
     channels.push(...items);
 
-    cursor = body?.nextCursor || body?.pagination?.cursor || body?.pagination?.nextCursor || "";
-    if (!cursor || items.length === 0) break;
+    cursor = body?.nextCursor || body?.pagination?.cursor || body?.pagination?.nextCursor || body?.data?.pagination?.nextCursor || "";
+    const hasMore = body?.data?.pagination?.hasMore ?? body?.pagination?.hasMore ?? Boolean(cursor);
+    if (!hasMore || !cursor || items.length === 0) break;
   }
 
   return channels.filter((channel) => channel?.isLive !== false);
@@ -247,7 +248,7 @@ function hasHeader(headers, headerName) {
 function buildSnapshots(capturedAt, channels, stats) {
   return channels.map((channel) => {
     const channelId = channel?.id || channel?.channelId;
-    const stat = normalizeObject(stats.get(channelId));
+    const stat = normalizeObject(stats.get(channelId)?.data ?? stats.get(channelId));
     const category = normalizeObject(channel?.category);
 
     return {
@@ -325,7 +326,7 @@ function buildCategories(current, previousHour) {
         momentum: Math.round(momentum),
         viewers: compactNumber(group.viewers),
         creators: group.creators,
-        trend: viewerDelta >= 0 ? "up" : "down",
+        trend: viewerDelta > 0 ? "up" : viewerDelta < 0 ? "down" : "flat",
         viewerDelta,
       };
     })
@@ -340,15 +341,15 @@ function buildSignals(categories, viewerDelta, creatorDelta, pressureIndex) {
   return [
     {
       label: top ? `${top.name} activity` : "Ecosystem activity",
-      value: top?.trend === "up" ? "Surging" : "Cooling",
-      tone: top?.trend === "up" ? "positive" : "negative",
-      detail: top ? `Demand ${top.viewerDelta >= 0 ? "up" : "down"} ${Math.abs(Math.round(top.viewerDelta))}% in the last hour.` : "Waiting for enough live category data.",
+      value: top?.trend === "up" ? "Surging" : top?.trend === "down" ? "Cooling" : "Active",
+      tone: top?.trend === "down" ? "negative" : top?.trend === "up" ? "positive" : "neutral",
+      detail: top ? demandDetail(top.viewerDelta) : "Waiting for enough live category data.",
     },
     {
       label: cooling ? `${cooling.name} activity` : "Audience demand",
-      value: cooling ? "Cooling" : viewerDelta >= 0 ? "Rising" : "Declining",
-      tone: cooling || viewerDelta < 0 ? "negative" : "positive",
-      detail: cooling ? "Viewers are rotating into faster categories." : `Viewer demand is ${viewerDelta >= 0 ? "above" : "below"} the last-hour baseline.`,
+      value: cooling ? "Cooling" : viewerDelta > 0 ? "Rising" : viewerDelta < 0 ? "Declining" : "Holding",
+      tone: cooling || viewerDelta < 0 ? "negative" : viewerDelta > 0 ? "positive" : "neutral",
+      detail: cooling ? "Viewers are rotating into faster categories." : demandBaselineDetail(viewerDelta),
     },
     {
       label: "Viewer competition",
@@ -363,6 +364,18 @@ function buildSignals(categories, viewerDelta, creatorDelta, pressureIndex) {
       detail: categories.length > 1 ? `Attention is consolidating around ${Math.min(3, categories.length)} categories.` : "Audience concentration is steady.",
     },
   ];
+}
+
+function demandBaselineDetail(viewerDelta) {
+  if (viewerDelta > 0) return "Viewer demand is above the last-hour baseline.";
+  if (viewerDelta < 0) return "Viewer demand is below the last-hour baseline.";
+  return "Viewer demand is steady against the current baseline.";
+}
+
+function demandDetail(viewerDelta) {
+  if (viewerDelta > 0) return `Demand up ${Math.abs(Math.round(viewerDelta))}% in the last hour.`;
+  if (viewerDelta < 0) return `Demand down ${Math.abs(Math.round(viewerDelta))}% in the last hour.`;
+  return "Demand is holding at the current live baseline.";
 }
 
 function buildTimeline(snapshots, capturedAt, currentScore) {
@@ -556,7 +569,9 @@ function normalizeStore(store) {
 
 function extractItems(body) {
   if (Array.isArray(body)) return body;
+  if (Array.isArray(body?.data?.rows)) return body.data.rows;
   if (Array.isArray(body?.data)) return body.data;
+  if (Array.isArray(body?.rows)) return body.rows;
   if (Array.isArray(body?.items)) return body.items;
   if (Array.isArray(body?.channels)) return body.channels;
   return [];

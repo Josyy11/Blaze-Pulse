@@ -24,7 +24,7 @@ type Category = {
   momentum: number;
   viewers: string;
   creators: number;
-  trend: "up" | "down";
+  trend: "up" | "down" | "flat";
 };
 
 type TimelinePoint = {
@@ -372,7 +372,9 @@ function CategoryMomentum() {
             <div className="momentum-bar" aria-label={`${category.name} momentum ${category.momentum}`}>
               <span style={{ width: `${category.momentum}%` }} />
             </div>
-            {category.trend === "up" ? <TrendingUp className="trend-positive" size={18} /> : <TrendingDown className="trend-negative" size={18} />}
+            {category.trend === "down"
+              ? <TrendingDown className="trend-negative" size={18} />
+              : <TrendingUp className={category.trend === "up" ? "trend-positive" : "trend-neutral"} size={18} />}
           </article>
         ))}
       </div>
