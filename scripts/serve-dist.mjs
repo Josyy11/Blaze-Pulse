@@ -5,6 +5,7 @@ import { handlePulseRequest } from "./pulse-service.mjs";
 
 const root = new URL("../dist/", import.meta.url).pathname.slice(1);
 const port = Number(process.env.PORT || 4173);
+const host = process.env.HOST || "0.0.0.0";
 
 const types = {
   ".html": "text/html; charset=utf-8",
@@ -31,6 +32,6 @@ createServer((request, response) => {
   response.setHeader("cache-control", "no-store, max-age=0");
   response.setHeader("content-type", types[extname(filePath)] || "application/octet-stream");
   createReadStream(filePath).pipe(response);
-}).listen(port, "127.0.0.1", () => {
-  console.log(`Serving dist at http://127.0.0.1:${port}`);
+}).listen(port, host, () => {
+  console.log(`Serving dist at http://${host}:${port}`);
 });
