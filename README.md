@@ -1,10 +1,12 @@
 # Blaze Pulse
 
-Blaze Pulse is an ecosystem intelligence platform built for the Blaze ecosystem.
+Blaze Pulse is a creator tool built for the Blaze ecosystem.
 
-Instead of overwhelming creators with raw numbers, Blaze Pulse continuously monitors the live ecosystem and helps answer one simple question:
+Powered by the official Blaze API, it monitors live ecosystem activity, audience movement, category momentum, and competition to help creators understand what's happening across the platform before they go live.
 
-**"Is now the right time to go live?"**
+Rather than focusing on historical analytics, Blaze Pulse answers one simple question:
+
+**Is now the right time to go live?**
 
 Powered by the official Blaze API, Blaze Pulse transforms live ecosystem data into actionable creator intelligence: current demand, creator pressure, category movement, and timing signals presented in one focused dashboard.
 
