@@ -298,8 +298,11 @@ h1 {
 .radar-core {
   inset: 34%;
   z-index: 2;
-  display: grid;
-  place-items: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
   border: 1px solid rgba(255, 244, 214, 0.22);
   border-radius: 50%;
   background: rgba(9, 9, 7, 0.72);
@@ -309,13 +312,15 @@ h1 {
 .radar-core span {
   font-size: clamp(38px, 7vw, 72px);
   font-weight: 900;
-  line-height: 1;
+  line-height: 0.82;
+  transform: translateY(4px);
 }
 
 .radar-core small {
-  margin-top: -18px;
   color: var(--lime);
   font-weight: 800;
+  line-height: 1;
+  letter-spacing: 0;
   text-transform: uppercase;
 }
 
@@ -536,8 +541,11 @@ h1 {
 .gauge-center {
   position: absolute;
   inset: 30.5%;
-  display: grid;
-  place-items: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
   border: 1px solid rgba(255, 244, 214, 0.18);
   border-radius: 50%;
   background:
@@ -549,15 +557,21 @@ h1 {
 .gauge-center span {
   font-size: clamp(42px, 7vw, 62px);
   font-weight: 950;
-  line-height: 0.9;
+  line-height: 0.82;
 }
 
 .gauge-center small {
-  margin-top: -20px;
   color: var(--positive);
-  font-size: 13px;
+  max-width: 78%;
+  overflow: hidden;
+  text-align: center;
+  font-size: 11px;
   font-weight: 850;
+  line-height: 1;
+  letter-spacing: 0;
   text-transform: uppercase;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .opportunity-gauge.state-prime .gauge-center small,
@@ -571,6 +585,7 @@ h1 {
 
 .opportunity-gauge.state-oversaturated .gauge-center small {
   color: var(--warning);
+  font-size: 8px;
 }
 
 .gauge-label {
