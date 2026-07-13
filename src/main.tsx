@@ -1,6 +1,6 @@
 import { createContext, StrictMode, useContext, useEffect, useState } from "react";
 import { createRoot } from "react-dom/client";
-import { Activity, ArrowRight, Clock3, Flame, Gauge, Radio, Sparkles, TrendingDown, TrendingUp, Users, Zap } from "lucide-react";
+import { Activity, ArrowRight, Clock3, Flame, Gauge, Radio, Sparkles, TrendingUp, Users, Zap } from "lucide-react";
 import "./styles.css";
 
 type PulseState = "Prime" | "Good" | "Busy" | "Oversaturated";
@@ -347,7 +347,7 @@ function SignalsPanel() {
 
 function CategoryMomentum() {
   const pulse = usePulse();
-  const title = pulse.categories.length > 0 ? "Attention is moving" : "Awaiting category data";
+  const title = pulse.categories.length > 0 ? "Attention\u00a0is\u00a0moving" : "Awaiting category data";
 
   return (
     <section className="panel category-panel" aria-labelledby="category-title">
@@ -376,9 +376,7 @@ function CategoryMomentum() {
             <div className="momentum-bar" aria-label={`${category.name} momentum ${category.momentum}`}>
               <span style={{ width: `${category.momentum}%` }} />
             </div>
-            {category.trend === "down"
-              ? <TrendingDown className="trend-negative" size={18} />
-              : <TrendingUp className={category.trend === "up" ? "trend-positive" : "trend-neutral"} size={18} />}
+            <TrendingUp className={category.momentum >= 50 ? "trend-positive" : "trend-neutral"} size={18} />
           </article>
         ))}
       </div>

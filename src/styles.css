@@ -650,7 +650,7 @@ h1 {
   width: fit-content;
   max-width: 100%;
   white-space: nowrap;
-  font-size: clamp(30px, 2.4vw, 38px);
+  font-size: 28px;
   color: var(--info);
   background: linear-gradient(100deg, var(--info), #f7f4ea 44%, var(--info) 72%);
   background-size: 240% 100%;
@@ -662,7 +662,8 @@ h1 {
 }
 
 .category-panel .motion-title {
-  font-size: clamp(28px, 2.35vw, 36px);
+  font-size: 28px;
+  letter-spacing: 0;
 }
 
 .recommendation-row {
@@ -1137,7 +1138,8 @@ h1 {
   }
 
   .category-panel .motion-title {
-    white-space: normal;
+    font-size: 25px;
+    white-space: nowrap;
   }
 
   .momentum-bar {
