@@ -17,6 +17,7 @@ type Metric = {
   value: string;
   delta?: string;
   tone?: "positive" | "negative" | "neutral";
+  deltaTone?: "positive" | "negative" | "neutral";
 };
 
 type Category = {
@@ -398,8 +399,8 @@ function CompetitionPressure() {
         <span />
       </div>
       <div className="pressure-grid">
-        <MetricMini label="Pressure index" value={`${pulse.pressure.index}/100`} tone={pulse.pressure.index >= 70 ? "negative" : "neutral"} />
-        <MetricMini label="Creator velocity" value={pulse.pressure.creatorVelocity} tone={pulse.pressure.creatorVelocity.startsWith("-") ? "negative" : "positive"} />
+        <MetricMini label="Pressure index" value={`${pulse.pressure.index}/100`} tone={pulse.pressure.index >= 70 ? "negative" : pulse.pressure.index <= 45 ? "positive" : "neutral"} />
+        <MetricMini label="Creator velocity" value={pulse.pressure.creatorVelocity} tone={toneFromSignedValue(pulse.pressure.creatorVelocity)} />
         <MetricMini label="Open window" value={pulse.pressure.openWindow} />
       </div>
     </section>
@@ -427,14 +428,20 @@ function LiveMetrics() {
   );
 }
 
-function MetricMini({ label, value, delta, tone = "neutral" }: Metric) {
+function MetricMini({ label, value, delta, tone = "neutral", deltaTone }: Metric) {
   return (
     <article className={`metric-mini tone-${tone}`}>
       <span>{label}</span>
       <strong>{value}</strong>
-      {delta && <em>{delta}</em>}
+      {delta && <em className={`delta-${deltaTone || toneFromSignedValue(delta)}`}>{delta}</em>}
     </article>
   );
+}
+
+function toneFromSignedValue(value: string): "positive" | "negative" | "neutral" {
+  if (value.startsWith("+") && value !== "+0%") return "positive";
+  if (value.startsWith("-") && value !== "-0%") return "negative";
+  return "neutral";
 }
 
 function Timeline24h() {

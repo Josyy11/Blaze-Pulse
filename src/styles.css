@@ -7,12 +7,12 @@
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   --ink: #f7f4ea;
-  --muted: #aaa392;
-  --soft: #766f61;
-  --panel: rgba(28, 27, 22, 0.78);
-  --panel-strong: rgba(38, 36, 29, 0.92);
-  --line: rgba(255, 244, 214, 0.12);
-  --line-strong: rgba(255, 244, 214, 0.18);
+  --muted: #c7bfaa;
+  --soft: #918875;
+  --panel: rgba(31, 30, 25, 0.84);
+  --panel-strong: rgba(42, 40, 33, 0.94);
+  --line: rgba(255, 244, 214, 0.16);
+  --line-strong: rgba(255, 244, 214, 0.28);
   --ember: #ff5a1f;
   --gold: #ffc247;
   --positive: #8cff63;
@@ -23,8 +23,8 @@
   --lime: var(--positive);
   --cyan: #54e3ff;
   --rose: var(--negative);
-  --shadow: 0 28px 80px rgba(0, 0, 0, 0.42);
-  --panel-shadow: 0 24px 70px rgba(0, 0, 0, 0.34), inset 0 1px 0 rgba(255,255,255,0.055);
+  --shadow: 0 30px 90px rgba(0, 0, 0, 0.48);
+  --panel-shadow: 0 28px 80px rgba(0, 0, 0, 0.42), inset 0 1px 0 rgba(255,255,255,0.075);
 }
 
 * {
@@ -402,7 +402,7 @@ h1 {
   border-radius: 20px;
   padding: clamp(18px, 3vw, 28px);
   background:
-    linear-gradient(180deg, rgba(255,255,255,0.052), rgba(255,255,255,0.014)),
+    linear-gradient(180deg, rgba(255,255,255,0.072), rgba(255,255,255,0.018)),
     var(--panel);
   box-shadow: var(--panel-shadow);
   transition: transform 220ms ease, border-color 220ms ease, background 220ms ease, box-shadow 220ms ease;
@@ -651,7 +651,7 @@ h1 {
   padding: 13px 14px;
   border: 1px solid var(--line);
   border-radius: 14px;
-  background: rgba(0, 0, 0, 0.14);
+  background: rgba(0, 0, 0, 0.2);
   transition: transform 180ms ease, border-color 180ms ease, background 180ms ease;
 }
 
@@ -787,7 +787,7 @@ h1 {
   padding: 15px;
   border: 1px solid var(--line);
   border-radius: 14px;
-  background: rgba(0, 0, 0, 0.14);
+  background: rgba(0, 0, 0, 0.22);
   transition: border-color 180ms ease, background 180ms ease, transform 180ms ease;
 }
 
@@ -816,6 +816,18 @@ h1 {
   font-size: 12px;
   font-style: normal;
   font-weight: 800;
+}
+
+.metric-mini em.delta-positive {
+  color: var(--positive);
+}
+
+.metric-mini em.delta-negative {
+  color: var(--negative);
+}
+
+.metric-mini em.delta-neutral {
+  color: var(--neutral);
 }
 
 .timeline-chart {

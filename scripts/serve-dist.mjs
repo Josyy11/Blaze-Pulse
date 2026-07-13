@@ -2,7 +2,7 @@ import { createReadStream, existsSync, statSync } from "node:fs";
 import { createServer } from "node:http";
 import { dirname, extname, join, normalize } from "node:path";
 import { fileURLToPath } from "node:url";
-import { handlePulseRequest } from "./pulse-service.mjs";
+import { handlePulseRequest, startPulseLedger } from "./pulse-service.mjs";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "../dist");
 const port = Number(process.env.PORT || 4173);
@@ -14,6 +14,8 @@ const types = {
   ".css": "text/css; charset=utf-8",
   ".svg": "image/svg+xml",
 };
+
+startPulseLedger();
 
 createServer((request, response) => {
   const url = new URL(request.url || "/", `http://127.0.0.1:${port}`);

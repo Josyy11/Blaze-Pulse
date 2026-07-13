@@ -17,6 +17,20 @@ const REQUEST_TIMEOUT_MS = Number(process.env.BLAZE_REQUEST_TIMEOUT_MS || 12_000
 let tokenCache = null;
 let snapshotPromise = null;
 let memoryPulse = null;
+let ledgerTimer = null;
+
+export function startPulseLedger() {
+  if (ledgerTimer) return;
+
+  void refreshLedger("boot");
+  ledgerTimer = setInterval(() => {
+    void refreshLedger("interval");
+  }, SNAPSHOT_INTERVAL_MS);
+
+  if (typeof ledgerTimer.unref === "function") {
+    ledgerTimer.unref();
+  }
+}
 
 export async function handlePulseRequest(_request, response) {
   try {
@@ -64,6 +78,19 @@ export async function getPulse() {
   }
 
   return snapshotPromise;
+}
+
+async function refreshLedger(reason) {
+  try {
+    if (!snapshotPromise) {
+      snapshotPromise = captureSnapshot().finally(() => {
+        snapshotPromise = null;
+      });
+    }
+    await snapshotPromise;
+  } catch (error) {
+    console.warn(`Pulse ledger ${reason} refresh failed: ${getConfigError(error)}`);
+  }
 }
 
 async function captureSnapshot() {
@@ -277,13 +304,17 @@ function buildPulse(capturedAt, snapshots) {
   const previousCreators = previousHour.length;
   const viewerDelta = percentDelta(liveViewers, previousViewers);
   const creatorDelta = percentDelta(liveCreators, previousCreators);
-  const newStreams15m = countNewStreams(current, previous15m, capturedAt);
+  const newStreams15m = countRecentlyStarted(current, capturedAt);
+  const previousNewStreams15m = countRecentlyStarted(previous15m, previous15m[0]?.capturedAt || capturedAt);
   const categories = buildCategories(current, previousHour);
   const pressureIndex = calculatePressureIndex(viewersPerCreator, newStreams15m, liveCreators);
   const score = calculateOpportunityScore(viewerDelta, viewersPerCreator, newStreams15m, liveCreators, categories[0]?.trend);
   const state = stateFromScore(score);
   const recommendation = recommendationFor(state);
   const timeline = buildTimeline(snapshots, capturedAt, score);
+  const ledger = buildLedgerStatus(capturedAt, snapshots);
+  const viewersPerCreatorDelta = percentDelta(viewersPerCreator, ratio(previousViewers, previousCreators));
+  const newStreamsDelta = percentDelta(newStreams15m, previousNewStreams15m);
 
   return {
     capturedAt,
@@ -299,14 +330,33 @@ function buildPulse(capturedAt, snapshots) {
       openWindow: `${openWindowMinutes(state, pressureIndex)}m`,
     },
     metrics: [
-      { label: "Live viewers", value: compactNumber(liveViewers), delta: signedPercent(viewerDelta), tone: toneForDelta(viewerDelta) },
-      { label: "Live creators", value: compactNumber(liveCreators), delta: signedPercent(creatorDelta), tone: toneForDelta(creatorDelta) },
-      { label: "Viewers per creator", value: String(viewersPerCreator), delta: signedPercent(percentDelta(viewersPerCreator, ratio(previousViewers, previousCreators))), tone: viewersPerCreator >= 35 ? "positive" : "negative" },
-      { label: "New streams / 15m", value: String(newStreams15m), delta: signedPercent(percentDelta(newStreams15m, countNewStreams(previous15m, [], capturedAt))), tone: newStreams15m <= Math.max(4, liveCreators * 0.15) ? "positive" : "negative" },
+      { label: "Live viewers", value: compactNumber(liveViewers), delta: signedPercent(viewerDelta), tone: "neutral", deltaTone: toneForDelta(viewerDelta) },
+      { label: "Live creators", value: compactNumber(liveCreators), delta: signedPercent(creatorDelta), tone: "neutral", deltaTone: toneForDelta(creatorDelta) },
+      { label: "Viewers per creator", value: String(viewersPerCreator), delta: signedPercent(viewersPerCreatorDelta), tone: viewersPerCreator >= 35 ? "positive" : viewersPerCreator < 8 ? "negative" : "neutral", deltaTone: toneForDelta(viewersPerCreatorDelta) },
+      { label: "New streams / 15m", value: String(newStreams15m), delta: signedPercent(newStreamsDelta), tone: newStreams15m <= Math.max(4, liveCreators * 0.15) ? "positive" : "negative", deltaTone: toneForDelta(newStreamsDelta) },
     ],
     signals: buildSignals(categories, viewerDelta, creatorDelta, pressureIndex),
     categories: categories.slice(0, 4),
     timeline,
+    ledger,
+  };
+}
+
+function buildLedgerStatus(capturedAt, snapshots) {
+  const times = [...new Set(snapshots.map((item) => item.capturedAt))];
+  const oldest = times[0] || capturedAt;
+  const newest = times.at(-1) || capturedAt;
+  const coveredMs = Math.max(0, new Date(newest).getTime() - new Date(oldest).getTime());
+  const expectedSamples = Math.max(1, Math.floor(HISTORY_WINDOW_MS / SNAPSHOT_INTERVAL_MS));
+
+  return {
+    status: times.length >= expectedSamples ? "complete" : "recording",
+    windowHours: 24,
+    cadenceSeconds: SNAPSHOT_INTERVAL_MS / 1000,
+    samples: times.length,
+    coveragePercent: clamp(Math.round((coveredMs / HISTORY_WINDOW_MS) * 100), 0, 100),
+    oldestSnapshotAt: oldest,
+    newestSnapshotAt: newest,
   };
 }
 
@@ -421,12 +471,10 @@ function closestSnapshotSet(snapshots, targetMs) {
   return snapshots.filter((item) => item.capturedAt === closest && item.isLive);
 }
 
-function countNewStreams(current, previous, capturedAt) {
-  const previousIds = new Set(previous.map((item) => item.channelId));
+function countRecentlyStarted(items, capturedAt) {
   const cutoff = new Date(capturedAt).getTime() - 15 * 60 * 1000;
 
-  return current.filter((item) => {
-    if (!previousIds.has(item.channelId)) return true;
+  return items.filter((item) => {
     if (!item.startedAt) return false;
     return new Date(item.startedAt).getTime() >= cutoff;
   }).length;
