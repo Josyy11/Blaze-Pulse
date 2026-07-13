@@ -183,7 +183,7 @@ function LandingPage() {
             <a className="primary-action" href="#dashboard">
               Check the pulse <Zap size={17} />
             </a>
-            <span className="status-pill"><Radio size={15} /> {pulse.status === "ready" ? "Live API state" : "Awaiting live API"}</span>
+            <span className="status-pill"><Radio size={15} /> {pulse.status === "ready" ? "Live ecosystem" : "Syncing ecosystem"}</span>
           </div>
         </div>
 
