@@ -1,6 +1,6 @@
 # Blaze Pulse
 
-Blaze Pulse is an ecosystem intelligence platform built for the Blaze ecosystem on Avalanche.
+Blaze Pulse is an ecosystem intelligence platform built for the Blaze ecosystem.
 
 Instead of overwhelming creators with raw numbers, Blaze Pulse continuously monitors the live ecosystem and helps answer one simple question:
 
