@@ -364,41 +364,54 @@ function buildCategories(current, previousHour) {
   const currentGroups = groupByCategory(current);
   const previousGroups = groupByCategory(previousHour);
 
-  return [...currentGroups.entries()]
+  const rows = [...currentGroups.entries()]
     .map(([categoryId, group]) => {
       const previous = previousGroups.get(categoryId) || { viewers: 0, creators: 0 };
       const viewerDelta = percentDelta(group.viewers, previous.viewers);
       const creatorDelta = percentDelta(group.creators, previous.creators);
-      const momentum = clamp(50 + viewerDelta - Math.max(0, creatorDelta), 8, 100);
+      const pressurePenalty = Math.max(0, creatorDelta) * 0.25;
+      const activityScore = group.viewers + group.creators * 2 + Math.max(0, viewerDelta) * 0.35 - pressurePenalty;
 
       return {
         name: group.name,
-        momentum: Math.round(momentum),
         viewers: compactNumber(group.viewers),
         creators: group.creators,
         trend: viewerDelta > 0 ? "up" : viewerDelta < 0 ? "down" : "flat",
         viewerDelta,
+        activityScore: Math.max(1, activityScore),
       };
-    })
+    });
+
+  const maxActivity = Math.max(1, ...rows.map((row) => row.activityScore));
+
+  return rows
+    .map((row) => ({
+      name: row.name,
+      momentum: Math.round(clamp((row.activityScore / maxActivity) * 100, 12, 100)),
+      viewers: row.viewers,
+      creators: row.creators,
+      trend: row.trend,
+      viewerDelta: row.viewerDelta,
+    }))
     .sort((left, right) => right.momentum - left.momentum);
 }
 
 function buildSignals(categories, viewerDelta, creatorDelta, pressureIndex) {
   const top = categories[0];
   const cooling = categories.find((category) => category.trend === "down");
-  const competitionTone = pressureIndex >= 70 ? "negative" : pressureIndex <= 45 ? "positive" : "neutral";
+  const competitionTone = pressureIndex >= 50 ? "negative" : pressureIndex <= 45 ? "positive" : "neutral";
 
   return [
     {
       label: top ? `${top.name} activity` : "Ecosystem activity",
       value: top?.trend === "up" ? "Surging" : top?.trend === "down" ? "Cooling" : "Active",
-      tone: top?.trend === "down" ? "negative" : top?.trend === "up" ? "positive" : "neutral",
+      tone: top?.trend === "down" ? "negative" : top?.trend === "up" ? "positive" : "info",
       detail: top ? demandDetail(top.viewerDelta) : "Waiting for enough live category data.",
     },
     {
       label: cooling ? `${cooling.name} activity` : "Audience demand",
       value: cooling ? "Cooling" : viewerDelta > 0 ? "Rising" : viewerDelta < 0 ? "Declining" : "Holding",
-      tone: cooling || viewerDelta < 0 ? "negative" : viewerDelta > 0 ? "positive" : "neutral",
+      tone: cooling || viewerDelta < 0 ? "negative" : viewerDelta > 0 ? "positive" : "warning",
       detail: cooling ? "Viewers are rotating into faster categories." : demandBaselineDetail(viewerDelta),
     },
     {
@@ -410,7 +423,7 @@ function buildSignals(categories, viewerDelta, creatorDelta, pressureIndex) {
     {
       label: "Audience shift",
       value: categories.length > 1 ? "Active" : "Stable",
-      tone: "neutral",
+      tone: categories.length > 1 ? "info" : "neutral",
       detail: categories.length > 1 ? `Attention is consolidating around ${Math.min(3, categories.length)} categories.` : "Audience concentration is steady.",
     },
   ];

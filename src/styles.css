@@ -19,6 +19,10 @@
   --positive-soft: rgba(140, 255, 99, 0.14);
   --negative: #ff657a;
   --negative-soft: rgba(255, 101, 122, 0.13);
+  --info: #54e3ff;
+  --info-soft: rgba(84, 227, 255, 0.14);
+  --warning: #ffc247;
+  --warning-soft: rgba(255, 194, 71, 0.14);
   --neutral: #f7f4ea;
   --lime: var(--positive);
   --cyan: #54e3ff;
@@ -543,7 +547,7 @@ h1 {
 }
 
 .gauge-center span {
-  font-size: clamp(50px, 9vw, 78px);
+  font-size: clamp(42px, 7vw, 62px);
   font-weight: 950;
   line-height: 0.9;
 }
@@ -554,6 +558,19 @@ h1 {
   font-size: 13px;
   font-weight: 850;
   text-transform: uppercase;
+}
+
+.opportunity-gauge.state-prime .gauge-center small,
+.opportunity-gauge.state-good .gauge-center small {
+  color: var(--positive);
+}
+
+.opportunity-gauge.state-busy .gauge-center small {
+  color: var(--negative);
+}
+
+.opportunity-gauge.state-oversaturated .gauge-center small {
+  color: var(--warning);
 }
 
 .gauge-label {
@@ -583,6 +600,14 @@ h1 {
   font-size: 17px;
 }
 
+.state-caption.state-busy strong {
+  color: var(--negative);
+}
+
+.state-caption.state-oversaturated strong {
+  color: var(--warning);
+}
+
 .state-caption span,
 .recommendation-card p {
   color: var(--muted);
@@ -603,6 +628,34 @@ h1 {
 .recommendation-card h3 {
   color: var(--positive);
   font-size: clamp(28px, 2.8vw, 40px);
+}
+
+.tone-text-positive {
+  color: var(--positive) !important;
+}
+
+.tone-text-negative {
+  color: var(--negative) !important;
+}
+
+.tone-text-warning {
+  color: var(--warning) !important;
+}
+
+.tone-text-info {
+  color: var(--info) !important;
+}
+
+.motion-title {
+  width: fit-content;
+  color: var(--info);
+  background: linear-gradient(100deg, var(--info), #f7f4ea 44%, var(--info) 72%);
+  background-size: 240% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  text-shadow: 0 0 26px rgba(84, 227, 255, 0.18);
+  animation: titleSheen 4.5s ease-in-out infinite;
+  -webkit-text-fill-color: transparent;
 }
 
 .recommendation-row {
@@ -692,6 +745,10 @@ h1 {
 .tone-negative em { color: var(--negative); }
 .tone-neutral strong,
 .tone-neutral em { color: var(--neutral); }
+.tone-info strong,
+.tone-info em { color: var(--info); }
+.tone-warning strong,
+.tone-warning em { color: var(--warning); }
 
 .tone-positive {
   border-color: rgba(140, 255, 99, 0.16);
@@ -699,6 +756,14 @@ h1 {
 
 .tone-negative {
   border-color: rgba(255, 101, 122, 0.15);
+}
+
+.tone-info {
+  border-color: rgba(84, 227, 255, 0.2);
+}
+
+.tone-warning {
+  border-color: rgba(255, 194, 71, 0.2);
 }
 
 .category-list {
@@ -741,7 +806,7 @@ h1 {
 }
 
 .trend-neutral {
-  color: var(--muted);
+  color: var(--info);
 }
 
 .momentum-bar,
@@ -768,6 +833,18 @@ h1 {
 .pressure-meter span {
   width: 42%;
   background: linear-gradient(90deg, var(--positive), var(--gold));
+}
+
+.pressure-meter.tone-negative span {
+  background: linear-gradient(90deg, var(--gold), var(--negative));
+}
+
+.pressure-meter.tone-warning span {
+  background: linear-gradient(90deg, var(--warning), var(--gold));
+}
+
+.pressure-meter.tone-positive span {
+  background: linear-gradient(90deg, var(--positive), rgba(140, 255, 99, 0.72));
 }
 
 .metrics-grid {
@@ -828,6 +905,14 @@ h1 {
 
 .metric-mini em.delta-neutral {
   color: var(--neutral);
+}
+
+.metric-mini em.delta-info {
+  color: var(--info);
+}
+
+.metric-mini em.delta-warning {
+  color: var(--warning);
 }
 
 .timeline-chart {
@@ -1083,6 +1168,16 @@ h1 {
 @keyframes shimmer {
   to {
     background-position: -220% 0;
+  }
+}
+
+@keyframes titleSheen {
+  0%, 100% {
+    background-position: 120% 0;
+  }
+
+  50% {
+    background-position: 0 0;
   }
 }
 

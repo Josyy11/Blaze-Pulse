@@ -4,11 +4,12 @@ import { Activity, ArrowRight, Clock3, Flame, Gauge, Radio, Sparkles, TrendingDo
 import "./styles.css";
 
 type PulseState = "Prime" | "Good" | "Busy" | "Oversaturated";
+type Tone = "positive" | "negative" | "neutral" | "info" | "warning";
 
 type Signal = {
   label: string;
   value: string;
-  tone: "positive" | "negative" | "neutral";
+  tone: Tone;
   detail: string;
 };
 
@@ -16,8 +17,8 @@ type Metric = {
   label: string;
   value: string;
   delta?: string;
-  tone?: "positive" | "negative" | "neutral";
-  deltaTone?: "positive" | "negative" | "neutral";
+  tone?: Tone;
+  deltaTone?: Tone;
 };
 
 type Category = {
@@ -248,20 +249,21 @@ function LastUpdated() {
 
 function OpportunityPanel() {
   const pulse = usePulse();
+  const tone = stateTone(pulse.state);
 
   return (
     <section className="panel opportunity-panel" aria-labelledby="opportunity-title">
       <div className="panel-heading">
         <div>
           <p className="eyebrow">Opportunity gauge</p>
-          <h3 id="opportunity-title">{pulse.state}</h3>
+          <h3 id="opportunity-title" className={`tone-text-${tone}`}>{pulse.state}</h3>
         </div>
         <Gauge size={22} />
       </div>
       <div className="gauge-wrap">
         <OpportunityGauge score={pulse.score} state={pulse.state} />
       </div>
-      <div className="state-caption">
+      <div className={`state-caption state-${pulse.state.toLowerCase()}`}>
         <strong>{stateCopy[pulse.state]}</strong>
         <span>Opportunity is reading {pulse.score}/100 from live ecosystem pressure.</span>
       </div>
@@ -272,7 +274,7 @@ function OpportunityPanel() {
 function OpportunityGauge({ score, state }: { score: number; state: PulseState }) {
   const angle = -126 + score * 2.52;
   return (
-    <div className="opportunity-gauge" aria-label={`Opportunity score ${score}, ${state}`}>
+    <div className={`opportunity-gauge state-${state.toLowerCase()}`} aria-label={`Opportunity score ${score}, ${state}`}>
       <div className="gauge-arc" />
       <div className="gauge-track" />
       <div className="gauge-needle" style={{ transform: `rotate(${angle}deg)` }} />
@@ -288,13 +290,14 @@ function OpportunityGauge({ score, state }: { score: number; state: PulseState }
 
 function RecommendationCard() {
   const pulse = usePulse();
+  const recommendationTone = stateTone(pulse.state);
 
   return (
     <section className="panel recommendation-card" aria-labelledby="recommendation-title">
       <div className="panel-heading">
         <div>
           <p className="eyebrow">Smart recommendation</p>
-          <h3 id="recommendation-title">{pulse.recommendation}</h3>
+          <h3 id="recommendation-title" className={`tone-text-${recommendationTone}`}>{pulse.recommendation}</h3>
         </div>
         <Sparkles size={22} />
       </div>
@@ -351,7 +354,7 @@ function CategoryMomentum() {
       <div className="panel-heading">
         <div>
           <p className="eyebrow">Category momentum</p>
-          <h3 id="category-title">{title}</h3>
+          <h3 id="category-title" className={pulse.categories.length > 0 ? "motion-title" : undefined}>{title}</h3>
         </div>
         <TrendingUp size={22} />
       </div>
@@ -385,18 +388,19 @@ function CategoryMomentum() {
 
 function CompetitionPressure() {
   const pulse = usePulse();
+  const pressureTone = pulse.pressure.index >= 50 ? "negative" : pulse.pressure.index <= 45 ? "positive" : "warning";
 
   return (
     <section className="panel pressure-panel" aria-labelledby="pressure-title">
       <div className="panel-heading">
         <div>
           <p className="eyebrow">Competition pressure</p>
-          <h3 id="pressure-title">{pulse.pressure.label}</h3>
+          <h3 id="pressure-title" className={`tone-text-${pressureTone}`}>{pulse.pressure.label}</h3>
         </div>
         <Users size={22} />
       </div>
-      <div className="pressure-meter">
-        <span />
+      <div className={`pressure-meter tone-${pressureTone}`}>
+        <span style={{ width: `${pulse.pressure.index}%` }} />
       </div>
       <div className="pressure-grid">
         <MetricMini label="Pressure index" value={`${pulse.pressure.index}/100`} tone={pulse.pressure.index >= 70 ? "negative" : pulse.pressure.index <= 45 ? "positive" : "neutral"} />
@@ -421,7 +425,7 @@ function LiveMetrics() {
       </div>
       <div className="metrics-grid">
         {pulse.metrics.map((metric) => (
-          <MetricMini key={metric.label} label={metric.label} value={metric.value} delta={metric.delta} tone={metric.tone} />
+          <MetricMini key={metric.label} label={metric.label} value={metric.value} delta={metric.delta} tone={metric.tone} deltaTone={metric.deltaTone} />
         ))}
       </div>
     </section>
@@ -438,10 +442,16 @@ function MetricMini({ label, value, delta, tone = "neutral", deltaTone }: Metric
   );
 }
 
-function toneFromSignedValue(value: string): "positive" | "negative" | "neutral" {
+function toneFromSignedValue(value: string): Tone {
   if (value.startsWith("+") && value !== "+0%") return "positive";
   if (value.startsWith("-") && value !== "-0%") return "negative";
   return "neutral";
+}
+
+function stateTone(state: PulseState): Tone {
+  if (state === "Prime" || state === "Good") return "positive";
+  if (state === "Busy") return "negative";
+  return "warning";
 }
 
 function Timeline24h() {
