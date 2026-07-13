@@ -332,7 +332,7 @@ function buildPulse(capturedAt, snapshots) {
     metrics: [
       { label: "Live viewers", value: compactNumber(liveViewers), delta: signedPercent(viewerDelta), tone: "neutral", deltaTone: toneForDelta(viewerDelta) },
       { label: "Live creators", value: compactNumber(liveCreators), delta: signedPercent(creatorDelta), tone: "neutral", deltaTone: toneForDelta(creatorDelta) },
-      { label: "Viewers per creator", value: String(viewersPerCreator), delta: signedPercent(viewersPerCreatorDelta), tone: viewersPerCreator >= 35 ? "positive" : viewersPerCreator < 8 ? "negative" : "neutral", deltaTone: toneForDelta(viewersPerCreatorDelta) },
+      { label: "Average viewers", value: String(viewersPerCreator), delta: signedPercent(viewersPerCreatorDelta), tone: viewersPerCreator >= 35 ? "positive" : viewersPerCreator < 8 ? "negative" : "neutral", deltaTone: toneForDelta(viewersPerCreatorDelta) },
       { label: "New streams / 15m", value: String(newStreams15m), delta: signedPercent(newStreamsDelta), tone: newStreams15m <= Math.max(4, liveCreators * 0.15) ? "positive" : "negative", deltaTone: toneForDelta(newStreamsDelta) },
     ],
     signals: buildSignals(categories, viewerDelta, creatorDelta, pressureIndex),
@@ -368,32 +368,31 @@ function buildCategories(current, previousHour) {
     .map(([categoryId, group]) => {
       const previous = previousGroups.get(categoryId) || { viewers: 0, creators: 0 };
       const viewerDelta = percentDelta(group.viewers, previous.viewers);
-      const creatorDelta = percentDelta(group.creators, previous.creators);
-      const pressurePenalty = Math.max(0, creatorDelta) * 0.25;
-      const activityScore = group.viewers + group.creators * 2 + Math.max(0, viewerDelta) * 0.35 - pressurePenalty;
 
       return {
         name: group.name,
+        viewerCount: group.viewers,
         viewers: compactNumber(group.viewers),
         creators: group.creators,
         trend: viewerDelta > 0 ? "up" : viewerDelta < 0 ? "down" : "flat",
         viewerDelta,
-        activityScore: Math.max(1, activityScore),
       };
     });
 
-  const maxActivity = Math.max(1, ...rows.map((row) => row.activityScore));
+  const maxViewers = Math.max(1, ...rows.map((row) => row.viewerCount));
 
   return rows
     .map((row) => ({
       name: row.name,
-      momentum: Math.round(clamp((row.activityScore / maxActivity) * 100, 12, 100)),
+      viewerCount: row.viewerCount,
+      momentum: Math.round(clamp((row.viewerCount / maxViewers) * 100, 10, 100)),
       viewers: row.viewers,
       creators: row.creators,
       trend: row.trend,
       viewerDelta: row.viewerDelta,
     }))
-    .sort((left, right) => right.momentum - left.momentum);
+    .sort((left, right) => right.viewerCount - left.viewerCount || right.creators - left.creators)
+    .map(({ viewerCount, ...row }) => row);
 }
 
 function buildSignals(categories, viewerDelta, creatorDelta, pressureIndex) {

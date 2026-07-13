@@ -74,7 +74,7 @@ const loadingPulse: PulseData = {
   metrics: [
     { label: "Live viewers", value: "--", tone: "neutral" },
     { label: "Live creators", value: "--", tone: "neutral" },
-    { label: "Viewers per creator", value: "--", tone: "neutral" },
+    { label: "Average viewers", value: "--", tone: "neutral" },
     { label: "New streams / 15m", value: "--", tone: "neutral" },
   ] satisfies Metric[],
   signals: [
