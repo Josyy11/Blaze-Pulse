@@ -158,9 +158,11 @@ function hasLiveCreators(pulse: PulseData) {
 
 function LandingPage() {
   const pulse = usePulse();
+  const isLive = pulse.status === "ready" || pulse.status === "stale";
+  const statusText = isLive ? "Live ecosystem" : pulse.status === "error" ? "Ecosystem offline" : "Syncing ecosystem";
 
   return (
-    <section className="landing" aria-labelledby="hero-title">
+    <section className="landing" id="top" aria-labelledby="hero-title">
       <div className="top-nav">
         <a className="brand" href="#top" aria-label="Blaze Pulse home">
           <span className="brand-mark"><Flame size={18} /></span>
@@ -183,7 +185,7 @@ function LandingPage() {
             <a className="primary-action" href="#dashboard">
               Check the pulse <Zap size={17} />
             </a>
-            <span className="status-pill"><Radio size={15} /> {pulse.status === "ready" ? "Live ecosystem" : "Syncing ecosystem"}</span>
+            <span className="status-pill"><Radio size={15} /> {statusText}</span>
           </div>
         </div>
 
@@ -319,9 +321,13 @@ function SignalsPanel() {
   const pulse = usePulse();
   const title = pulse.status !== "ready" && pulse.status !== "stale"
     ? "Live feed unavailable"
-    : hasLiveCreators(pulse)
-      ? "Why now looks strong"
-      : "Awaiting live activity";
+    : !hasLiveCreators(pulse)
+      ? "Awaiting live activity"
+      : pulse.state === "Prime" || pulse.state === "Good"
+        ? "Why now looks strong"
+        : pulse.state === "Busy"
+          ? "Why timing is mixed"
+          : "Why now looks crowded";
 
   return (
     <section className="panel signals-panel" aria-labelledby="signals-title">

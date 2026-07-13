@@ -55,6 +55,11 @@ a {
   text-decoration: none;
 }
 
+a:focus-visible {
+  outline: 2px solid rgba(255, 194, 71, 0.9);
+  outline-offset: 4px;
+}
+
 button,
 a {
   -webkit-tap-highlight-color: transparent;

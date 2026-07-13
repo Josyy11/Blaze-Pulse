@@ -346,15 +346,15 @@ function buildLedgerStatus(capturedAt, snapshots) {
   const times = [...new Set(snapshots.map((item) => item.capturedAt))];
   const oldest = times[0] || capturedAt;
   const newest = times.at(-1) || capturedAt;
-  const coveredMs = Math.max(0, new Date(newest).getTime() - new Date(oldest).getTime());
   const expectedSamples = Math.max(1, Math.floor(HISTORY_WINDOW_MS / SNAPSHOT_INTERVAL_MS));
+  const sampleCoverage = times.length > 0 ? Math.max(1, Math.round((times.length / expectedSamples) * 100)) : 0;
 
   return {
     status: times.length >= expectedSamples ? "complete" : "recording",
     windowHours: 24,
     cadenceSeconds: SNAPSHOT_INTERVAL_MS / 1000,
     samples: times.length,
-    coveragePercent: clamp(Math.round((coveredMs / HISTORY_WINDOW_MS) * 100), 0, 100),
+    coveragePercent: clamp(sampleCoverage, 0, 100),
     oldestSnapshotAt: oldest,
     newestSnapshotAt: newest,
   };
@@ -417,7 +417,7 @@ function buildSignals(categories, viewerDelta, creatorDelta, pressureIndex) {
       label: "Viewer competition",
       value: pressureLabel(pressureIndex),
       tone: competitionTone,
-      detail: creatorDelta <= viewerDelta ? "Creator growth is below viewer growth." : "Creator growth is moving faster than demand.",
+      detail: competitionDetail(pressureIndex, creatorDelta, viewerDelta),
     },
     {
       label: "Audience shift",
@@ -426,6 +426,12 @@ function buildSignals(categories, viewerDelta, creatorDelta, pressureIndex) {
       detail: categories.length > 1 ? `Attention is consolidating around ${Math.min(3, categories.length)} categories.` : "Audience concentration is steady.",
     },
   ];
+}
+
+function competitionDetail(pressureIndex, creatorDelta, viewerDelta) {
+  if (pressureIndex >= 50) return "Audience attention is split across active live creators.";
+  if (creatorDelta <= viewerDelta) return "Creator pressure is below viewer growth.";
+  return "Creator growth is moving faster than demand.";
 }
 
 function demandBaselineDetail(viewerDelta) {
